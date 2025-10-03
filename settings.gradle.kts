@@ -1,4 +1,4 @@
-rootProject.name = "BonjourBrowser"
+rootProject.name = "SyncKMP"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 pluginManagement {
@@ -33,3 +33,4 @@ plugins {
 }
 
 include(":composeApp")
+include(":syncthing")

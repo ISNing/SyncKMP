@@ -1,8 +1,6 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
-import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpackConfig
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -10,6 +8,8 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.composeHotReload)
+    alias(libs.plugins.kotlinSerialization)
+    alias(libs.plugins.ksp)
 }
 
 kotlin {
@@ -20,53 +20,56 @@ kotlin {
         }
     }
     
-    listOf(
-        iosX64(),
-        iosArm64(),
-        iosSimulatorArm64()
-    ).forEach { iosTarget ->
-        iosTarget.binaries.framework {
-            baseName = "ComposeApp"
-            isStatic = true
-        }
-    }
-    
+//    listOf(
+//        iosX64(),
+//        iosArm64(),
+//        iosSimulatorArm64()
+//    ).forEach { iosTarget ->
+//        iosTarget.binaries.framework {
+//            baseName = "ComposeApp"
+//            isStatic = true
+//        }
+//    }
+
     jvm()
-    
-    @OptIn(ExperimentalWasmDsl::class)
-    wasmJs {
-        outputModuleName.set("composeApp")
-        browser {
-            val rootDirPath = project.rootDir.path
-            val projectDirPath = project.projectDir.path
-            commonWebpackConfig {
-                outputFileName = "composeApp.js"
-                devServer = (devServer ?: KotlinWebpackConfig.DevServer()).apply {
-                    static = (static ?: mutableListOf()).apply {
-                        // Serve sources to debug inside browser
-                        add(rootDirPath)
-                        add(projectDirPath)
-                    }
-                }
-            }
-        }
-        binaries.executable()
-    }
     
     sourceSets {
         androidMain.dependencies {
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
+            implementation(libs.koin.androidx.compose)
         }
         commonMain.dependencies {
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material3)
+            implementation(compose.runtimeSaveable) // 干啥用的
+            implementation(compose.materialIconsExtended)
+            implementation(compose.material3AdaptiveNavigationSuite)
             implementation(compose.ui)
             implementation(compose.components.resources)
             implementation(compose.components.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
+            implementation(libs.androidx.navigationCompose)
+
+            implementation(libs.compose.preference)
+            implementation(libs.compose.nativeTray)
+//            implementation(libs.compose.fluent)
+
+            implementation(libs.ktor.serialization.kotlinx.json)
+
+            implementation(libs.ktor.client.core)
+            implementation(libs.ktor.client.cio)
+            implementation(libs.ktor.client.content.negotiation)
+            implementation(libs.ktor.client.logging)
+
+            implementation(libs.lyricist)
+            implementation(libs.koin.core)
+            implementation(libs.koin.compose)
+            implementation(libs.xmlutil.core)
+            implementation(libs.xmlutil.serialization)
+            implementation(libs.kotlin.logging)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -74,24 +77,66 @@ kotlin {
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
+
+            implementation(libs.platformOnly.jvm.slf4j.api)
+            implementation(libs.platformOnly.jvm.slf4j.simple)
         }
     }
 }
 
+dependencies {
+    kspCommonMainMetadata(libs.lyricist.processor)
+}
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask<*>>().all {
+    if(name != "kspCommonMainKotlinMetadata") {
+        dependsOn("kspCommonMainKotlinMetadata")
+    }
+}
+
+kotlin.sourceSets.commonMain {
+    kotlin.srcDir("build/generated/ksp/metadata/commonMain/kotlin")
+}
+
+//FIXME: Remove this
+//project.afterEvaluate {
+//    val isCopilot = System.getenv("IS_COPILOT")?.toBoolean() ?: false
+//    if (!isCopilot) {
+//        android.buildTypes.forEach {
+//            val capitalizedName = it.name.replaceFirstChar { ch -> ch.uppercase() }
+//            tasks.named("merge${capitalizedName}JniLibFolders") {
+//                dependsOn(":syncthing:buildNative")
+//            }
+//        }
+//    }
+//}
+
 android {
-    namespace = "moe.isning.dev.bonjourbrowser"
+    namespace = "moe.isning.syncthing"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
+    ndkVersion = libs.versions.android.ndk.get()
 
     defaultConfig {
-        applicationId = "moe.isning.dev.bonjourbrowser"
+        applicationId = "moe.isning.syncthing"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
     }
+
+    externalNativeBuild {
+        ndkBuild {
+            path = file("src/androidMain/cpp/libSyncthingNative.mk")
+        }
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+        jniLibs {
+            // Otherwise libsyncthing.so doesn't appear where it should in installs
+            // based on app bundles, and thus nothing works.
+            useLegacyPackaging = true
         }
     }
     buildTypes {
@@ -111,12 +156,17 @@ dependencies {
 
 compose.desktop {
     application {
-        mainClass = "moe.isning.dev.bonjourbrowser.MainKt"
+        mainClass = "moe.isning.syncthing.MainKt"
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "moe.isning.dev.bonjourbrowser"
+            appResourcesRootDir.set(project.layout.projectDirectory.dir("src/jvmMain/nativeDistResources"))
+            packageName = "moe.isning.syncthing"
             packageVersion = "1.0.0"
         }
     }
+}
+
+ksp {
+    arg("lyricist.internalVisibility", "true")
 }
