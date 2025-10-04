@@ -53,7 +53,7 @@ data class Connections(
 
 @Serializable
 data class ConnectionTotals(
-    val at: Long? = null,
+    val at: String? = null,  // ISO 8601 时间字符串，例如 "2025-10-04T23:18:28+08:00"
     val inBytesTotal: Long? = null,
     val outBytesTotal: Long? = null,
 )

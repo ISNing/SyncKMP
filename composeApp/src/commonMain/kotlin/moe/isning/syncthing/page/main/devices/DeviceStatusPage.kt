@@ -1,44 +1,221 @@
 package moe.isning.syncthing.page.main.devices
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.BubbleChart
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Computer
-import androidx.compose.material.icons.filled.Devices
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.Extension
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.Key
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Upload
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
+import cafe.adriel.lyricist.LocalStrings
+import moe.isning.syncthing.lifecycle.LocalServiceController
+import kotlin.math.abs
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DevicesPage() {
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val controller = LocalServiceController.current
+    val api = controller.api
+    
+    val viewModel = remember { DevicesPageViewModel(api) }
+    val state by viewModel.state.collectAsState()
+    
+    LaunchedEffect(Unit) {
+        viewModel.loadDevices()
+    }
+    
+    Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection).fillMaxSize(),
+        topBar = {
+            LargeTopAppBar(
+                title = { Text(LocalStrings.current.titleDevices) },
+                scrollBehavior = scrollBehavior
+            )
+        }
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            when {
+                state.isLoading -> {
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+                state.error != null -> {
+                    Column(
+                        modifier = Modifier.align(Alignment.Center),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text("Error: ${state.error}")
+                        Button(onClick = { viewModel.loadDevices() }) {
+                            Text("Retry")
+                        }
+                    }
+                }
+                state.devices.isEmpty() -> {
+                    Text(
+                        text = "No devices configured",
+                        modifier = Modifier.align(Alignment.Center),
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(state.devices) { deviceWithConnection ->
+                            DeviceCard(
+                                deviceWithConnection = deviceWithConnection,
+                                onPause = { viewModel.pauseDevice(deviceWithConnection.device.id) },
+                                onResume = { viewModel.resumeDevice(deviceWithConnection.device.id) }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 @Composable
-fun DevicesPage(
+fun DeviceCard(
+    deviceWithConnection: DeviceWithConnection,
+    onPause: () -> Unit,
+    onResume: () -> Unit
 ) {
+    val device = deviceWithConnection.device
+    val connection = deviceWithConnection.connection
+    val isConnected = connection?.connected ?: false
+    
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Header with device name and status
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = device.name ?: device.id.take(7),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = device.id.take(7) + "...",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                
+                // Connection status badge
+                AssistChip(
+                    onClick = { },
+                    label = { Text(if (isConnected) "Connected" else "Disconnected") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = if (isConnected) Icons.Default.CheckCircle else Icons.Default.Error,
+                            contentDescription = null
+                        )
+                    },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = if (isConnected) 
+                            MaterialTheme.colorScheme.primaryContainer
+                        else 
+                            MaterialTheme.colorScheme.errorContainer,
+                        labelColor = if (isConnected)
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        else
+                            MaterialTheme.colorScheme.onErrorContainer
+                    )
+                )
+            }
+            
+            if (isConnected) {
+                Divider()
+                
+                // Connection details
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    connection?.let { conn ->
+                        DeviceInfoRow(
+                            Icons.Default.Computer,
+                            "Address",
+                            conn.address ?: "unknown"
+                        )
+                        
+                        DeviceInfoRow(
+                            Icons.Default.Extension,
+                            "Client Version",
+                            conn.clientVersion ?: "unknown"
+                        )
+                        
+                        DeviceInfoRow(
+                            Icons.Default.Download,
+                            "Downloaded",
+                            formatBytes(conn.inBytesTotal ?: 0L)
+                        )
+                        
+                        DeviceInfoRow(
+                            Icons.Default.Upload,
+                            "Uploaded",
+                            formatBytes(conn.outBytesTotal ?: 0L)
+                        )
+                        
+                        if (conn.paused == true) {
+                            DeviceInfoRow(
+                                Icons.Default.Pause,
+                                "Status",
+                                "Paused",
+                                highlight = true
+                            )
+                        }
+                    }
+                }
+            } else {
+                Divider()
+                Text(
+                    text = "Device is not currently connected",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            // Action buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                if (device.paused == true) {
+                    FilledTonalButton(onClick = onResume) {
+                        Icon(Icons.Default.PlayArrow, contentDescription = null)
+                        Spacer(Modifier.width(4.dp))
+                        Text("Resume")
+                    }
+                } else {
+                    FilledTonalButton(onClick = onPause) {
+                        Icon(Icons.Default.Pause, contentDescription = null)
+                        Spacer(Modifier.width(4.dp))
+                        Text("Pause")
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -70,4 +247,16 @@ fun DeviceInfoRow(icon: ImageVector, title: String, value: String, highlight: Bo
         )
     }
 }
+
+private fun formatBytes(bytes: Long): String {
+    val absBytes = abs(bytes)
+    if (absBytes < 1024) return "$bytes B"
+    val kb = absBytes / 1024.0
+    if (kb < 1024) return "%.2f KiB".format(kb)
+    val mb = kb / 1024.0
+    if (mb < 1024) return "%.2f MiB".format(mb)
+    val gb = mb / 1024.0
+    return "%.2f GiB".format(gb)
+}
+
 

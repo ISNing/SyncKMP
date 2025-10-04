@@ -26,6 +26,7 @@ import androidx.navigation.navArgument
 import androidx.navigation.toRoute
 import androidx.savedstate.read
 import kotlinx.coroutines.launch
+import moe.isning.syncthing.lifecycle.LocalServiceController
 import moe.isning.syncthing.page.main.devices.DevicesPage
 import moe.isning.syncthing.page.main.folders.FoldersPage
 import moe.isning.syncthing.page.main.home.HomePage
@@ -36,6 +37,10 @@ import moe.isning.syncthing.page.main.settings.SettingsPage
 @Composable
 fun MainPage(/*preferredViewModel: PreferredViewModel*/) {
     val navController = rememberNavController()
+    
+    // 获取服务控制器并监听运行状态
+    val serviceController = LocalServiceController.current
+    val isRunning = serviceController.isRunning
 
     val scope = rememberCoroutineScope()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -81,7 +86,7 @@ fun MainPage(/*preferredViewModel: PreferredViewModel*/) {
         ) {
             composable<MainNavigationRoute.Home> {
                 val route: MainNavigationRoute.Home = it.toRoute()
-                HomePage()
+                HomePage(isRunning = isRunning)
             }
             composable<MainNavigationRoute.Folders> {
                 val route: MainNavigationRoute.Folders = it.toRoute()
