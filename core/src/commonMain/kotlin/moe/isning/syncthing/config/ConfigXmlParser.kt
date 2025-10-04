@@ -15,7 +15,7 @@ class ConfigXmlParser(private val file: File) : ConfigApi {
     private var config: Configuration = load() ?: Configuration(0)
 
     private fun load(): Configuration? {
-        if (!file.exists()) return null
+        if (!file.exists() || !file.isFile) return null
         return xml.decodeFromString<Configuration>(file.readText())
     }
 

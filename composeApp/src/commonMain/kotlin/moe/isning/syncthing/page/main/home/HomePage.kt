@@ -33,18 +33,23 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import cafe.adriel.lyricist.LocalStrings
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.launch
+import moe.isning.syncthing.http.SystemVersion
 import moe.isning.syncthing.lifecycle.LocalServiceController
 import moe.isning.syncthing.lifecycle.SyncthingServiceController
 import moe.isning.syncthing.page.main.devices.DeviceInfoRow
-import org.koin.compose.koinInject
+
+private val logger = KotlinLogging.logger {}
 
 @OptIn(DelicateCoroutinesApi::class, ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -52,8 +57,12 @@ fun HomePage(
     isRunning: Boolean = true
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+
     val controller: SyncthingServiceController = LocalServiceController.current
+    val api = controller.api
+
     val scope = rememberCoroutineScope()
+
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection).fillMaxSize(), topBar = {
             LargeTopAppBar(
@@ -82,6 +91,7 @@ fun HomePage(
                     ),
                     onClick = {
                         scope.launch {
+                            logger.info { "Home page: toggle status" }
                             if (!controller.isRunning)
                                 controller.startServe()
                             else controller.shutdownAndStop()

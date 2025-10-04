@@ -1,11 +1,19 @@
 package moe.isning.syncthing.lifecycle
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.compositionLocalOf
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import moe.isning.syncthing.config.ConfigApi
 import moe.isning.syncthing.http.SyncthingApi
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+
+enum class SyncthingServiceState {
+    Idle,
+    Starting,
+    Running,
+    Stopping,
+    Error,
+}
 
 interface SyncthingServiceController : SyncthingProcessLifecycleController, SyncthingConfigController,
     SyncthingApiController
@@ -14,6 +22,8 @@ interface SyncthingProcessLifecycleController {
     var cfg: SyncthingProcessConfig
 
     val isRunning: Boolean
+
+    val state: StateFlow<SyncthingServiceState>
 
     suspend fun startServe(
         waitForWebGui: Boolean = true,
@@ -41,12 +51,3 @@ interface SyncthingConfigController {
 interface SyncthingApiController {
     val api: SyncthingApi
 }
-
-@Composable
-expect fun buildDefaultSyncthingServiceController(
-    cfg: SyncthingProcessConfig,
-): SyncthingServiceController
-
-
-val LocalServiceController =
-    compositionLocalOf<SyncthingServiceController> { throw IllegalStateException("No service controller provided") }

@@ -37,6 +37,7 @@ interface SyncthingProcessRunner {
         cfg.dataPath?.let { base += listOf("--data", it) }
         if (cfg.configPath == null && cfg.dataPath == null)
             cfg.workingDir?.let { base += listOf("--home", it) }
+        cfg.apiKey?.let { base += listOf("--gui-apikey=$it") }
         base.addAll(cfg.extraArgs)
         return base.toList()
     }

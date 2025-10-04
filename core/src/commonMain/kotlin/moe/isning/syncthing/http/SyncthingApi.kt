@@ -2,6 +2,7 @@ package moe.isning.syncthing.http
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
@@ -41,12 +42,12 @@ annotation class SyncthingExpensiveEndpoint
  * - Events streaming exposed as Kotlin Flow.
  */
 class SyncthingApi(
+    private val cfg: SyncthingApiConfig,
     private val client: HttpClient,
-    private val baseUrl: String,
 ): ConfigApi {
 
-    private fun io.ktor.client.request.HttpRequestBuilder.apiUrl(path: String) {
-        url(baseUrl)
+    private fun HttpRequestBuilder.apiUrl(path: String) {
+        url(cfg.baseUrl)
         url { this.path(path) }
     }
 
@@ -501,5 +502,5 @@ class SyncthingApi(
         return response.status.isSuccess()
     }
 
-    val poller by lazy { WebGuiPoller(client, baseUrl) }
+    val poller by lazy { WebGuiPoller(client, cfg.baseUrl) }
 }

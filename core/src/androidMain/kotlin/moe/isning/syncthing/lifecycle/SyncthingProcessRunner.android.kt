@@ -1,6 +1,7 @@
 package moe.isning.syncthing.lifecycle
 
 import android.os.Build
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -10,11 +11,15 @@ import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileWriter
+import java.io.IOException
 import java.io.InputStreamReader
+import java.io.InterruptedIOException
 import java.nio.charset.Charset
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
+
+private val logger = KotlinLogging.logger { }
 
 /**
  * Spawns and supervises the Syncthing native process.
@@ -37,29 +42,30 @@ class AndroidSyncthingProcessRunner(
             }
         }
 
-    override suspend fun start(command: SyncthingCommand, cfg: SyncthingProcessConfigProcessBuildable): Int? = withContext(Dispatchers.IO) {
-        if (isRunning) return@withContext null
+    override suspend fun start(command: SyncthingCommand, cfg: SyncthingProcessConfigProcessBuildable): Int? =
+        withContext(Dispatchers.IO) {
+            if (isRunning) return@withContext null
 
-        val args = buildArgs(command, cfg)
-        val pb = if (cfg.useRoot) {
-            // Keep root execution: run via `su -c` with a shell-escaped command line.
-            val cmdLine = args.joinToString(" ") { shellEscape(it) }
-            ProcessBuilder(listOf("su", "-c", cmdLine))
-        } else {
-            ProcessBuilder(args)
+            val args = buildArgs(command, cfg)
+            val pb = if (cfg.useRoot) {
+                // Keep root execution: run via `su -c` with a shell-escaped command line.
+                val cmdLine = args.joinToString(" ") { shellEscape(it) }
+                ProcessBuilder(listOf("su", "-c", cmdLine))
+            } else {
+                ProcessBuilder(args)
+            }
+            cfg.workingDir?.let { pb.directory(File(it)) }
+            if (cfg.env.isNotEmpty()) {
+                val env = pb.environment()
+                cfg.env.forEach { (k, v) -> env[k] = v }
+            }
+            pb.redirectErrorStream(false)
+            val process = pb.start()
+            processRef.set(process)
+            notificationSink.onStarted()
+            ioJob = pipeProcessIO(process, cfg)
+            null
         }
-        cfg.workingDir?.let { pb.directory(File(it)) }
-        if (cfg.env.isNotEmpty()) {
-            val env = pb.environment()
-            cfg.env.forEach { (k, v) -> env[k] = v }
-        }
-        pb.redirectErrorStream(false)
-        val process = pb.start()
-        processRef.set(process)
-        notificationSink.onStarted()
-        ioJob = pipeProcessIO(process, cfg)
-        null
-    }
 
     override suspend fun awaitExit(): Int = withContext(Dispatchers.IO) {
         val p = processRef.get() ?: return@withContext 0
@@ -108,44 +114,59 @@ class AndroidSyncthingProcessRunner(
     }
 
     private fun pipeProcessIO(process: Process, cfg: SyncthingProcessConfigProcessBuildable): Job {
-        val logFile = cfg.logFilePath?.let { File(it) }
+        val logFile = cfg.logFilePath?.let { File(it) }?.also { if(!it.exists()) it.createNewFile() }
         var writer: FileWriter? = logFile?.let { FileWriter(it, true) }
         return scope.launch(Dispatchers.IO) {
             try {
+                val nativeLogger = KotlinLogging.logger("${logger.name}/NativeLog")
                 val outReader = BufferedReader(InputStreamReader(process.inputStream, Charset.defaultCharset()))
                 val errReader = BufferedReader(InputStreamReader(process.errorStream, Charset.defaultCharset()))
                 var linesWritten = 0
 
                 val outJob = launch {
-                    outReader.useLines { seq ->
-                        seq.forEach { line ->
-                            notificationSink.onOutput(line, false)
-                            writer?.let {
-                                it.appendLine(line)
-                                linesWritten++
-                                if (linesWritten >= cfg.maxLogLines) {
-                                    try {
-                                        it.flush()
-                                    } catch (_: Throwable) {
+                    try {
+                        outReader.useLines { seq ->
+                            seq.forEach { line ->
+                                notificationSink.onOutput(line, false)
+                                writer?.let {
+                                    it.appendLine(line)
+                                    nativeLogger.error { line }
+                                    linesWritten++
+                                    if (linesWritten >= cfg.maxLogLines) {
+                                        try {
+                                            it.flush()
+                                        } catch (_: Throwable) {
+                                        }
+                                        try {
+                                            it.close()
+                                        } catch (_: Throwable) {
+                                        }
+                                        rotateLog(logFile)
+                                        writer = logFile?.let { FileWriter(it, true) }
+                                        linesWritten = 0
                                     }
-                                    try {
-                                        it.close()
-                                    } catch (_: Throwable) {
-                                    }
-                                    rotateLog(logFile)
-                                    writer = logFile?.let { FileWriter(it, true) }
-                                    linesWritten = 0
                                 }
                             }
                         }
+                    } catch (e: InterruptedIOException) {
+                        logger.info(e) { "Interrupted while reading from process output stream" }
+                    } catch (e: IOException) {
+                        logger.info(e) { "Failed to read from process output stream" }
                     }
                 }
                 val errJob = launch {
-                    errReader.useLines { seq ->
-                        seq.forEach { line ->
-                            notificationSink.onOutput(line, true)
-                            writer?.appendLine(line)
+                    try {
+                        errReader.useLines { seq ->
+                            seq.forEach { line ->
+                                notificationSink.onOutput(line, true)
+                                writer?.appendLine(line)
+                                nativeLogger.warn { line }
+                            }
                         }
+                    } catch (e: InterruptedIOException) {
+                        logger.info(e) { "Interrupted while reading from process error stream" }
+                    } catch (e: IOException) {
+                        logger.info(e) { "Failed to read from process error stream" }
                     }
                 }
                 outJob.join()

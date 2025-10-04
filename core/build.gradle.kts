@@ -4,12 +4,12 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.androidApplication)
-    alias(libs.plugins.composeMultiplatform)
-    alias(libs.plugins.composeCompiler)
-    alias(libs.plugins.composeHotReload)
+    alias(libs.plugins.androidLibrary)
+//    alias(libs.plugins.composeMultiplatform)
+//    alias(libs.plugins.composeCompiler)
+//    alias(libs.plugins.composeHotReload)
     alias(libs.plugins.kotlinSerialization)
-    alias(libs.plugins.ksp)
+//    alias(libs.plugins.ksp)
 }
 
 kotlin {
@@ -19,7 +19,7 @@ kotlin {
             jvmTarget.set(JvmTarget.JVM_11)
         }
     }
-    
+
 //    listOf(
 //        iosX64(),
 //        iosArm64(),
@@ -32,29 +32,31 @@ kotlin {
 //    }
 
     jvm()
-    
+
     sourceSets {
         androidMain.dependencies {
-            implementation(compose.preview)
-            implementation(libs.androidx.activity.compose)
-            implementation(libs.koin.androidx.compose)
+//            implementation(compose.preview)
+            implementation(libs.androidx.appcompat)
+//            implementation(libs.koin.androidx.compose)
+            implementation(libs.platformOnly.jvm.slf4j.api)
+            implementation(libs.platformOnly.jvm.slf4j.simple)
         }
         commonMain.dependencies {
-            implementation(compose.runtime)
-            implementation(compose.foundation)
-            implementation(compose.material3)
-            implementation(compose.runtimeSaveable) // 干啥用的
-            implementation(compose.materialIconsExtended)
-            implementation(compose.material3AdaptiveNavigationSuite)
-            implementation(compose.ui)
-            implementation(compose.components.resources)
-            implementation(compose.components.uiToolingPreview)
-            implementation(libs.androidx.lifecycle.viewmodelCompose)
-            implementation(libs.androidx.lifecycle.runtimeCompose)
-            implementation(libs.androidx.navigationCompose)
-
-            implementation(libs.compose.preference)
-            implementation(libs.compose.nativeTray)
+//            implementation(compose.runtime)
+//            implementation(compose.foundation)
+//            implementation(compose.material3)
+//            implementation(compose.runtimeSaveable) // 干啥用的
+//            implementation(compose.materialIconsExtended)
+//            implementation(compose.material3AdaptiveNavigationSuite)
+//            implementation(compose.ui)
+//            implementation(compose.components.resources)
+//            implementation(compose.components.uiToolingPreview)
+//            implementation(libs.androidx.lifecycle.viewmodelCompose)
+//            implementation(libs.androidx.lifecycle.runtimeCompose)
+//            implementation(libs.androidx.navigationCompose)
+//
+//            implementation(libs.compose.preference)
+//            implementation(libs.compose.nativeTray)
 //            implementation(libs.compose.fluent)
 
             implementation(libs.ktor.serialization.kotlinx.json)
@@ -65,35 +67,33 @@ kotlin {
             implementation(libs.ktor.client.logging)
 
             implementation(libs.lyricist)
-            implementation(libs.koin.core)
-            implementation(libs.koin.compose)
+//            implementation(libs.koin.core)
+//            implementation(libs.koin.compose)
             implementation(libs.xmlutil.core)
             implementation(libs.xmlutil.serialization)
             implementation(libs.kotlin.logging)
-
-            implementation(project(":core"))
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
         jvmMain.dependencies {
-            implementation(compose.desktop.currentOs)
-            implementation(libs.kotlinx.coroutinesSwing)
+//            implementation(compose.desktop.currentOs)
+//            implementation(libs.kotlinx.coroutinesSwing)
 
             implementation(libs.platformOnly.jvm.slf4j.api)
             implementation(libs.platformOnly.jvm.slf4j.simple)
         }
     }
 }
-
-dependencies {
-    kspCommonMainMetadata(libs.lyricist.processor)
-}
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask<*>>().all {
-    if(name != "kspCommonMainKotlinMetadata") {
-        dependsOn("kspCommonMainKotlinMetadata")
-    }
-}
+//
+//dependencies {
+//    kspCommonMainMetadata(libs.lyricist.processor)
+//}
+//tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask<*>>().all {
+//    if(name != "kspCommonMainKotlinMetadata") {
+//        dependsOn("kspCommonMainKotlinMetadata")
+//    }
+//}
 
 kotlin.sourceSets.commonMain {
     kotlin.srcDir("build/generated/ksp/metadata/commonMain/kotlin")
@@ -118,27 +118,24 @@ android {
     ndkVersion = libs.versions.android.ndk.get()
 
     defaultConfig {
-        applicationId = "moe.isning.syncthing"
         minSdk = libs.versions.android.minSdk.get().toInt()
-        targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 1
-        versionName = "1.0"
+
+        lint.targetSdk = libs.versions.android.targetSdk.get().toInt()
+        testOptions.targetSdk = libs.versions.android.targetSdk.get().toInt()
     }
 
-//    externalNativeBuild {
-//        ndkBuild {
-//            path = file("src/androidMain/cpp/libSyncthingNative.mk")
-//        }
-//    }
+    externalNativeBuild {
+        ndkBuild {
+            path = file("src/androidMain/cpp/libSyncthingNative.mk")
+        }
+    }
 
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
         jniLibs {
-            // Otherwise libsyncthing.so doesn't appear where it should in installs
-            // based on app bundles, and thus nothing works.
-            useLegacyPackaging = true
+
         }
     }
     buildTypes {
@@ -153,22 +150,18 @@ android {
 }
 
 dependencies {
-    debugImplementation(compose.uiTooling)
+//    debugImplementation(compose.uiTooling)
 }
 
-compose.desktop {
-    application {
-        mainClass = "moe.isning.syncthing.MainKt"
-
-        nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            appResourcesRootDir.set(project.layout.projectDirectory.dir("src/jvmMain/nativeDistResources"))
-            packageName = "moe.isning.syncthing"
-            packageVersion = "1.0.0"
-        }
-    }
-}
-
-ksp {
-    arg("lyricist.internalVisibility", "true")
-}
+//compose.desktop {
+//    application {
+//        mainClass = "moe.isning.syncthing.MainKt"
+//
+//        nativeDistributions {
+//            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
+//            appResourcesRootDir.set(project.layout.projectDirectory.dir("src/jvmMain/nativeDistResources"))
+//            packageName = "moe.isning.syncthing"
+//            packageVersion = "1.0.0"
+//        }
+//    }
+//}

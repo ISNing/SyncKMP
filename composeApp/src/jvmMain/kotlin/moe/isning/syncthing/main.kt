@@ -12,6 +12,7 @@ import androidx.compose.ui.window.application
 import cafe.adriel.lyricist.LocalStrings
 import com.kdroid.composetray.tray.api.Tray
 import io.ktor.client.HttpClient
+import moe.isning.syncthing.di.commonModules
 import org.koin.core.context.GlobalContext.startKoin
 import org.koin.dsl.module
 import org.slf4j.simple.SimpleLogger
@@ -21,9 +22,7 @@ fun main() = application {
     System.setProperty(SimpleLogger.DEFAULT_LOG_LEVEL_KEY, "TRACE")
 
     startKoin {
-        modules(module {
-            factory { HttpClient() }
-        })
+        modules(commonModules)
     }
     var isWindowOpen by remember { mutableStateOf(true) }
 

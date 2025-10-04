@@ -1,6 +1,7 @@
 package moe.isning.syncthing.http
 
 import io.ktor.client.HttpClient
+import io.ktor.client.HttpClientConfig
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
@@ -38,7 +39,7 @@ object SyncthingHttpClientFactory {
         config: SyncthingApiConfig,
         enableLogging: Boolean = false,
         // Hook for platform-specific TLS or engine config from caller
-        configure: io.ktor.client.HttpClientConfig<*>.() -> Unit = {},
+        configure: HttpClientConfig<*>.() -> Unit = {},
     ): HttpClient = HttpClient {
         install(ContentNegotiation) {
             json(
@@ -61,7 +62,7 @@ object SyncthingHttpClientFactory {
             }
         }
         defaultRequest {
-            headers.append("X-API-Key", config.apiKey)
+            headers.append("Authorization", "Bearer ${config.apiKey}")
             headers.append("Accept", ContentType.Application.Json.toString())
             contentType(ContentType.Application.Json)
         }

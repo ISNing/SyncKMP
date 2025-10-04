@@ -1,9 +1,17 @@
 package moe.isning.syncthing.lifecycle
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import moe.isning.syncthing.config.ConfigApi
 import moe.isning.syncthing.config.ConfigXmlParser
@@ -11,6 +19,9 @@ import moe.isning.syncthing.http.SyncthingApi
 import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.ExperimentalTime
+
+
+private val logger = KotlinLogging.logger {}
 
 /**
  * Platform-agnostic controller that manages the native process lifecycle and the REST API.
@@ -33,7 +44,12 @@ class RawSyncthingServiceController(
     private var runner = buildSyncthingProcessRunner(scope, notificationSink)
     private var monitorJob: Job? = null
 
+    private val mutex = Mutex()
+
     override val isRunning get() = runner.isRunning
+
+    val _state: MutableStateFlow<SyncthingServiceState> = MutableStateFlow(SyncthingServiceState.Idle)
+    override val state: StateFlow<SyncthingServiceState> = _state.asStateFlow()
 
     override val configApi: ConfigApi
         get() = if (runner.isRunning) api else configXmlParser
@@ -45,9 +61,23 @@ class RawSyncthingServiceController(
         pollInterval: Duration,
         timeout: Duration?,
     ) {
-        runner.start(SyncthingCommand.Serve, cfg)
-        if (waitForWebGui) {
-            api.poller.waitUntilAvailable(pollInterval, timeout)
+        mutex.withLock {
+            if (runner.isRunning) {
+                logger.warn { "startServe called but process is already running" }
+                return
+            }
+            _state.value = SyncthingServiceState.Starting
+            logger.info { "Starting Syncthing process" }
+            runner.start(SyncthingCommand.Serve, cfg)
+            if (waitForWebGui) {
+                api.poller.waitUntilAvailable(pollInterval, timeout)
+                _state.value = SyncthingServiceState.Running
+            } else {
+                scope.launch {
+                    api.poller.waitUntilAvailable(pollInterval, timeout)
+                    _state.value = SyncthingServiceState.Running
+                }
+            }
         }
     }
 
@@ -60,17 +90,26 @@ class RawSyncthingServiceController(
     /** Tries to shut down via REST, then stops the process if still running. */
     @OptIn(ExperimentalTime::class)
     override suspend fun shutdownAndStop(gracefulWaitMs: Long) {
-        withContext(Dispatchers.IO) {
-            runCatching { api.shutdown() }
-            // Wait a bit for the process to exit by itself
-            val started = Clock.System.now().toEpochMilliseconds()
-            while (Clock.System.now().toEpochMilliseconds() - started < gracefulWaitMs) {
-                if (!runner.isRunning) break
-                delay(100)
+        mutex.withLock {
+            if (!runner.isRunning) {
+                logger.warn { "shutdownAndStop called but process is not running" }
+                return
             }
-            if (runner.isRunning) {
-                // Process didn’t exit, kill it
-                runner.stop(graceful = false, killDelayMs = 2000)
+            _state.value = SyncthingServiceState.Stopping
+            withContext(Dispatchers.IO) {
+                logger.info { "Shutting down Syncthing process" }
+                runCatching { api.shutdown() }
+                // Wait a bit for the process to exit by itself
+                val started = Clock.System.now().toEpochMilliseconds()
+                while (Clock.System.now().toEpochMilliseconds() - started < gracefulWaitMs) {
+                    if (!runner.isRunning) break
+                    delay(100)
+                }
+                if (runner.isRunning) {
+                    // Process didn’t exit, kill it
+                    runner.stop(graceful = false, killDelayMs = 2000)
+                }
+                _state.value = SyncthingServiceState.Idle
             }
         }
     }
