@@ -11,8 +11,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import cafe.adriel.lyricist.LocalStrings
+import kotlinx.coroutines.launch
 import moe.isning.syncthing.lifecycle.LocalServiceController
 import kotlin.math.abs
 
@@ -26,8 +29,19 @@ fun DevicesPage() {
     val viewModel = remember { DevicesPageViewModel(api) }
     val state by viewModel.state.collectAsState()
     
+    var showAddDialog by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+    
     LaunchedEffect(Unit) {
         viewModel.loadDevices()
+    }
+    
+    // Show operation messages
+    LaunchedEffect(state.operationMessage) {
+        state.operationMessage?.let { message ->
+            snackbarHostState.showSnackbar(message)
+        }
     }
     
     Scaffold(
@@ -37,7 +51,15 @@ fun DevicesPage() {
                 title = { Text(LocalStrings.current.titleDevices) },
                 scrollBehavior = scrollBehavior
             )
-        }
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { showAddDialog = true }
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Add Device")
+            }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         Box(
             modifier = Modifier
@@ -74,6 +96,29 @@ fun DevicesPage() {
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
+                        // My Device ID Card
+                        item {
+                            state.myDeviceId?.let { deviceId ->
+                                MyDeviceIdCard(
+                                    deviceId = deviceId,
+                                    onCopySuccess = {
+                                        coroutineScope.launch {
+                                            snackbarHostState.showSnackbar("Device ID copied to clipboard")
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                        
+                        // Section header for other devices
+                        item {
+                            Text(
+                                text = "Connected Devices",
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                            )
+                        }
+                        
                         items(state.devices) { deviceWithConnection ->
                             DeviceCard(
                                 deviceWithConnection = deviceWithConnection,
@@ -84,6 +129,23 @@ fun DevicesPage() {
                     }
                 }
             }
+        }
+        
+        if (showAddDialog) {
+            AddDeviceDialog(
+                onDismiss = { showAddDialog = false },
+                onConfirm = { deviceId, name, addresses ->
+                    viewModel.addDevice(deviceId, name, addresses) { success, message ->
+                        showAddDialog = false
+                        coroutineScope.launch {
+                            snackbarHostState.showSnackbar(message)
+                        }
+                        if (success) {
+                            viewModel.loadDevices()
+                        }
+                    }
+                }
+            )
         }
     }
 }
@@ -257,6 +319,248 @@ private fun formatBytes(bytes: Long): String {
     if (mb < 1024) return "%.2f MiB".format(mb)
     val gb = mb / 1024.0
     return "%.2f GiB".format(gb)
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddDeviceDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (deviceId: String, name: String, addresses: List<String>) -> Unit
+) {
+    var deviceId by remember { mutableStateOf("") }
+    var deviceName by remember { mutableStateOf("") }
+    var addressesText by remember { mutableStateOf("dynamic") }
+    var compression by remember { mutableStateOf("metadata") }
+    var introducer by remember { mutableStateOf(false) }
+    
+    var deviceIdError by remember { mutableStateOf(false) }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add Device") },
+        text = {
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                item {
+                    OutlinedTextField(
+                        value = deviceId,
+                        onValueChange = { 
+                            deviceId = it.trim()
+                            deviceIdError = false
+                        },
+                        label = { Text("Device ID *") },
+                        isError = deviceIdError,
+                        supportingText = if (deviceIdError) {
+                            { Text("Device ID is required") }
+                        } else null,
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = false,
+                        maxLines = 4
+                    )
+                }
+                
+                item {
+                    OutlinedTextField(
+                        value = deviceName,
+                        onValueChange = { deviceName = it },
+                        label = { Text("Device Name") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                }
+                
+                item {
+                    OutlinedTextField(
+                        value = addressesText,
+                        onValueChange = { addressesText = it },
+                        label = { Text("Addresses") },
+                        supportingText = { Text("Comma-separated list or 'dynamic'") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = false,
+                        maxLines = 3
+                    )
+                }
+                
+                item {
+                    Text(
+                        text = "Compression",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        FilterChip(
+                            selected = compression == "metadata",
+                            onClick = { compression = "metadata" },
+                            label = { Text("Metadata") }
+                        )
+                        FilterChip(
+                            selected = compression == "always",
+                            onClick = { compression = "always" },
+                            label = { Text("Always") }
+                        )
+                        FilterChip(
+                            selected = compression == "never",
+                            onClick = { compression = "never" },
+                            label = { Text("Never") }
+                        )
+                    }
+                }
+                
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Introducer",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Text(
+                                text = "Auto-accept folders from this device",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = introducer,
+                            onCheckedChange = { introducer = it }
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    if (deviceId.isBlank()) {
+                        deviceIdError = true
+                    } else {
+                        val addresses = addressesText.split(",")
+                            .map { it.trim() }
+                            .filter { it.isNotEmpty() }
+                        onConfirm(deviceId, deviceName, addresses)
+                    }
+                }
+            ) {
+                Text("Add")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun MyDeviceIdCard(
+    deviceId: String,
+    onCopySuccess: () -> Unit
+) {
+    val clipboardManager = LocalClipboardManager.current
+    
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Smartphone,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        text = "This Device",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+                
+                AssistChip(
+                    onClick = { },
+                    label = { Text("Local") },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        labelColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                )
+            }
+            
+            Divider(color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f))
+            
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "Device ID",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                )
+                
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.small,
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = deviceId,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f),
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                        )
+                        
+                        IconButton(
+                            onClick = {
+                                clipboardManager.setText(AnnotatedString(deviceId))
+                                onCopySuccess()
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ContentCopy,
+                                contentDescription = "Copy Device ID",
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
+                }
+            }
+            
+            Text(
+                text = "Share this ID with other devices to establish connections",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+            )
+        }
+    }
 }
 
 

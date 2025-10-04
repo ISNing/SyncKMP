@@ -11,5 +11,7 @@ data class DeviceWithConnection(
 data class DevicesPageState(
     val isLoading: Boolean = true,
     val error: String? = null,
-    val devices: List<DeviceWithConnection> = emptyList()
+    val devices: List<DeviceWithConnection> = emptyList(),
+    val operationMessage: String? = null,
+    val myDeviceId: String? = null
 )
