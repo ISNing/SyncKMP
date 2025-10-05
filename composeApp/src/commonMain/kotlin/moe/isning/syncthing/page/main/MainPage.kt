@@ -27,11 +27,13 @@ import androidx.navigation.toRoute
 import androidx.savedstate.read
 import kotlinx.coroutines.launch
 import moe.isning.syncthing.lifecycle.LocalServiceController
+import moe.isning.syncthing.lifecycle.SyncthingServiceState
 import moe.isning.syncthing.page.main.devices.DevicesPage
 import moe.isning.syncthing.page.main.folders.FoldersPage
 import moe.isning.syncthing.page.main.home.HomePage
 import moe.isning.syncthing.page.main.logs.LogsPage
 import moe.isning.syncthing.page.main.settings.SettingsPage
+import androidx.compose.runtime.collectAsState
 
 
 @Composable
@@ -40,7 +42,8 @@ fun MainPage(/*preferredViewModel: PreferredViewModel*/) {
     
     // 获取服务控制器并监听运行状态
     val serviceController = LocalServiceController.current
-    val isRunning = serviceController.isRunning
+    val serviceState by serviceController.state.collectAsState()
+    val isRunning = serviceState == SyncthingServiceState.Running
 
     val scope = rememberCoroutineScope()
     val navBackStackEntry by navController.currentBackStackEntryAsState()

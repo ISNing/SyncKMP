@@ -9,8 +9,8 @@ import androidx.compose.ui.text.withStyle
 import cafe.adriel.lyricist.LyricistStrings
 
 object Locales {
-    const val EN = "en"
     const val ZH_HANS = "zh-Hans"
+    const val EN = "en"
 }
 
 data class Strings(

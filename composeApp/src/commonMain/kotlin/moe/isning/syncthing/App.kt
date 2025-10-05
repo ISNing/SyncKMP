@@ -23,6 +23,15 @@ fun App() {
         SyncthingHttpClientFactory.create(apiConfig)))
 
     CompositionLocalProvider(LocalServiceController provides serviceController) {
+        // 自动启动 Syncthing 服务
+        LaunchedEffect(Unit) {
+            runCatching {
+                // 等待 Web GUI 可用，避免首页立即请求失败
+                serviceController.startServe(waitForWebGui = true)
+            }.onFailure {
+                // 可根据需要添加日志或 UI 通知，这里静默处理避免崩溃
+            }
+        }
         AppTheme {
             MainPage()
         }
