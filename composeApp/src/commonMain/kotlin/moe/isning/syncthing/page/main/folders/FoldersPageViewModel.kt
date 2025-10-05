@@ -198,4 +198,21 @@ class FoldersPageViewModel(private val api: SyncthingApi) : ViewModel() {
             }
         }
     }
+
+    fun deleteFolder(folderId: String, onComplete: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val ok = api.deleteFolder(folderId)
+                if (ok) {
+                    _state.value = _state.value.copy(operationMessage = "Folder deleted")
+                    loadFolders()
+                    onComplete(true, "Folder deleted")
+                } else {
+                    onComplete(false, "Failed to delete folder")
+                }
+            } catch (e: Exception) {
+                onComplete(false, "Error: ${e.message ?: "Unknown error"}")
+            }
+        }
+    }
 }

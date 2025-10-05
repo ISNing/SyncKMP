@@ -100,7 +100,22 @@ fun FoldersPage() {
                                 onResume = { viewModel.resumeFolder(folderWithStatus.folder.id) },
                                 onRefresh = { viewModel.refreshFolder(folderWithStatus.folder.id) },
                                 onOverride = { viewModel.overrideFolder(folderWithStatus.folder.id) },
-                                onRevert = { viewModel.revertFolder(folderWithStatus.folder.id) }
+                                onRevert = { viewModel.revertFolder(folderWithStatus.folder.id) },
+                                onDelete = {
+                                    // show confirm dialog per item
+                                    coroutineScope.launch {
+                                        val result = snackbarHostState.showSnackbar(
+                                            message = "删除 ${folderWithStatus.folder.label ?: folderWithStatus.folder.id} ?",
+                                            actionLabel = "确认",
+                                            withDismissAction = true
+                                        )
+                                        if (result == SnackbarResult.ActionPerformed) {
+                                            viewModel.deleteFolder(folderWithStatus.folder.id) { success, msg ->
+                                                coroutineScope.launch { snackbarHostState.showSnackbar(msg) }
+                                            }
+                                        }
+                                    }
+                                }
                             )
                         }
                     }
@@ -135,7 +150,8 @@ fun FolderCard(
     onResume: () -> Unit,
     onRefresh: () -> Unit,
     onOverride: () -> Unit,
-    onRevert: () -> Unit
+    onRevert: () -> Unit,
+    onDelete: () -> Unit
 ) {
     val folder = folderWithStatus.folder
     val status = folderWithStatus.status
@@ -289,6 +305,15 @@ fun FolderCard(
                 Column(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    OutlinedButton(
+                        onClick = onDelete,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("删除文件夹")
+                    }
                     OutlinedButton(
                         onClick = { showShareEdit = true },
                         modifier = Modifier.fillMaxWidth()

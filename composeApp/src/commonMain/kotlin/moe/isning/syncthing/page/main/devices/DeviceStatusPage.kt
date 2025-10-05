@@ -123,7 +123,33 @@ fun DevicesPage() {
                             DeviceCard(
                                 deviceWithConnection = deviceWithConnection,
                                 onPause = { viewModel.pauseDevice(deviceWithConnection.device.id) },
-                                onResume = { viewModel.resumeDevice(deviceWithConnection.device.id) }
+                                onResume = { viewModel.resumeDevice(deviceWithConnection.device.id) },
+                                onDelete = {
+                                    val deviceId = deviceWithConnection.device.id
+                                    val isMy = state.myDeviceId == deviceId
+                                    coroutineScope.launch {
+                                        if (isMy) {
+                                            snackbarHostState.showSnackbar("不能删除本机设备")
+                                            return@launch
+                                        }
+                                        val result = snackbarHostState.showSnackbar(
+                                            message = "删除设备 ${deviceWithConnection.device.name ?: deviceId.take(7)}?",
+                                            actionLabel = "确认",
+                                            withDismissAction = true
+                                        )
+                                        if (result == SnackbarResult.ActionPerformed) {
+                                            // ask cascade via second confirm
+                                            val cascade = snackbarHostState.showSnackbar(
+                                                message = "是否同时从所有文件夹取消共享该设备?",
+                                                actionLabel = "是",
+                                                withDismissAction = true
+                                            ) == SnackbarResult.ActionPerformed
+                                            viewModel.deleteDevice(deviceId, cascade) { _, msg ->
+                                                coroutineScope.launch { snackbarHostState.showSnackbar(msg) }
+                                            }
+                                        }
+                                    }
+                                }
                             )
                         }
                     }
@@ -154,7 +180,8 @@ fun DevicesPage() {
 fun DeviceCard(
     deviceWithConnection: DeviceWithConnection,
     onPause: () -> Unit,
-    onResume: () -> Unit
+    onResume: () -> Unit,
+    onDelete: () -> Unit
 ) {
     val device = deviceWithConnection.device
     val connection = deviceWithConnection.connection
@@ -274,6 +301,12 @@ fun DeviceCard(
                         Spacer(Modifier.width(4.dp))
                         Text("Pause")
                     }
+                }
+
+                OutlinedButton(onClick = onDelete, colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
+                    Icon(Icons.Default.Delete, contentDescription = null)
+                    Spacer(Modifier.width(4.dp))
+                    Text("Delete")
                 }
             }
         }

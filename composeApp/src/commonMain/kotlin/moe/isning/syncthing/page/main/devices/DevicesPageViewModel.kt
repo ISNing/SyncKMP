@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import moe.isning.syncthing.http.SyncthingApi
 import moe.isning.syncthing.config.Device
+import moe.isning.syncthing.config.Folder
+import moe.isning.syncthing.config.FolderDevice
 
 class DevicesPageViewModel(private val api: SyncthingApi) : ViewModel() {
     private val _state = MutableStateFlow(DevicesPageState())
@@ -103,6 +105,41 @@ class DevicesPageViewModel(private val api: SyncthingApi) : ViewModel() {
                 _state.value = _state.value.copy(
                     operationMessage = "Failed to resume device: ${e.message}"
                 )
+            }
+        }
+    }
+
+    fun deleteDevice(deviceId: String, cascadeFolders: Boolean, onComplete: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                // do not allow deleting self
+                val myId = runCatching { api.getSystemStatus().myID }.getOrNull()
+                if (deviceId == myId) {
+                    onComplete(false, "Cannot delete local device")
+                    return@launch
+                }
+
+                if (cascadeFolders) {
+                    // remove this device from all folders' share list
+                    val folders = runCatching { api.getFolders() }.getOrDefault(emptyList())
+                    folders.forEach { f ->
+                        if (f.devices.any { it.id == deviceId }) {
+                            val updated = f.copy(devices = f.devices.filter { it.id != deviceId })
+                            runCatching { api.putFolder(f.id, updated) }
+                        }
+                    }
+                }
+
+                val ok = api.deleteDevice(deviceId)
+                if (ok) {
+                    _state.value = _state.value.copy(operationMessage = "Device deleted")
+                    loadDevices()
+                    onComplete(true, "Device deleted")
+                } else {
+                    onComplete(false, "Failed to delete device")
+                }
+            } catch (e: Exception) {
+                onComplete(false, "Error: ${e.message ?: "Unknown error"}")
             }
         }
     }
