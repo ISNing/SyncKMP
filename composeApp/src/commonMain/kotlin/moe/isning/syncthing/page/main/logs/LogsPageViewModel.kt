@@ -21,8 +21,8 @@ class LogsPageViewModel(private val api: SyncthingApi) : ViewModel() {
                 _state.value = _state.value.copy(isLoading = true, error = null)
                 if (resetSince) sinceToken = null
 
-                val errors = api.getSystemErrors().errors
-                val logs = api.getSystemLog(since = sinceToken).messages
+                val errors = api.getSystemErrors().errors.orEmpty()
+                val logs = api.getSystemLog(since = sinceToken).messages.orEmpty()
                 sinceToken = logs.lastOrNull()?.time ?: sinceToken
 
                 _state.value = _state.value.copy(
@@ -44,7 +44,7 @@ class LogsPageViewModel(private val api: SyncthingApi) : ViewModel() {
             val ok = api.clearSystemError()
             if (ok) {
                 // refresh
-                val errors = api.getSystemErrors().errors
+                val errors = api.getSystemErrors().errors.orEmpty()
                 _state.value = _state.value.copy(systemErrors = errors)
             }
             ok

@@ -158,10 +158,10 @@ data class LogEntry(
 // 定义系统错误响应数据类
 @Serializable
 data class SystemErrorResponse(
-    val errors: List<LogEntry>
+    val errors: List<LogEntry>? = emptyList()
 )
 
 @Serializable
 data class SystemLogResponse(
-    val messages: List<LogEntry>
+    val messages: List<LogEntry>? = emptyList()
 )
