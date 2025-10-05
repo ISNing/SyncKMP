@@ -44,12 +44,21 @@ fun DevicesPage() {
         }
     }
     
+    var pendingDeleteId by remember { mutableStateOf<String?>(null) }
+    var pendingDeleteName by remember { mutableStateOf<String?>(null) }
+    var cascadeDelete by remember { mutableStateOf(false) }
+
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection).fillMaxSize(),
         topBar = {
             LargeTopAppBar(
                 title = { Text(LocalStrings.current.titleDevices) },
-                scrollBehavior = scrollBehavior
+                scrollBehavior = scrollBehavior,
+                actions = {
+                    IconButton(onClick = { viewModel.loadDevices() }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "刷新设备列表")
+                    }
+                }
             )
         },
         floatingActionButton = {
@@ -77,6 +86,8 @@ fun DevicesPage() {
                         modifier = Modifier.align(Alignment.Center),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        Icon(Icons.Default.Error, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                        Spacer(Modifier.height(8.dp))
                         Text("Error: ${state.error}")
                         Button(onClick = { viewModel.loadDevices() }) {
                             Text("Retry")
@@ -84,11 +95,23 @@ fun DevicesPage() {
                     }
                 }
                 state.devices.isEmpty() -> {
-                    Text(
-                        text = "No devices configured",
+                    Column(
                         modifier = Modifier.align(Alignment.Center),
-                        style = MaterialTheme.typography.bodyLarge
-                    )
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(Icons.Default.Devices, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = "No devices configured",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = "点击右下角 + 按钮来添加设备",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
                 else -> {
                     LazyColumn(
@@ -127,27 +150,12 @@ fun DevicesPage() {
                                 onDelete = {
                                     val deviceId = deviceWithConnection.device.id
                                     val isMy = state.myDeviceId == deviceId
-                                    coroutineScope.launch {
-                                        if (isMy) {
-                                            snackbarHostState.showSnackbar("不能删除本机设备")
-                                            return@launch
-                                        }
-                                        val result = snackbarHostState.showSnackbar(
-                                            message = "删除设备 ${deviceWithConnection.device.name ?: deviceId.take(7)}?",
-                                            actionLabel = "确认",
-                                            withDismissAction = true
-                                        )
-                                        if (result == SnackbarResult.ActionPerformed) {
-                                            // ask cascade via second confirm
-                                            val cascade = snackbarHostState.showSnackbar(
-                                                message = "是否同时从所有文件夹取消共享该设备?",
-                                                actionLabel = "是",
-                                                withDismissAction = true
-                                            ) == SnackbarResult.ActionPerformed
-                                            viewModel.deleteDevice(deviceId, cascade) { _, msg ->
-                                                coroutineScope.launch { snackbarHostState.showSnackbar(msg) }
-                                            }
-                                        }
+                                    if (isMy) {
+                                        coroutineScope.launch { snackbarHostState.showSnackbar("不能删除本机设备") }
+                                    } else {
+                                        pendingDeleteId = deviceId
+                                        pendingDeleteName = deviceWithConnection.device.name ?: deviceId.take(7)
+                                        cascadeDelete = false
                                     }
                                 }
                             )
@@ -173,6 +181,38 @@ fun DevicesPage() {
                 }
             )
         }
+    }
+    if (pendingDeleteId != null) {
+        AlertDialog(
+            onDismissRequest = { pendingDeleteId = null; pendingDeleteName = null },
+            icon = { Icon(Icons.Default.Delete, contentDescription = null) },
+            title = { Text("删除设备") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("确定要删除设备 ${pendingDeleteName} ?")
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = cascadeDelete, onCheckedChange = { cascadeDelete = it })
+                        Spacer(Modifier.width(4.dp))
+                        Text("同时从所有文件夹取消共享该设备")
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val id = pendingDeleteId
+                    val cascade = cascadeDelete
+                    pendingDeleteId = null; pendingDeleteName = null
+                    if (id != null) {
+                        viewModel.deleteDevice(id, cascade) { _, msg ->
+                            coroutineScope.launch { snackbarHostState.showSnackbar(msg) }
+                        }
+                    }
+                }) { Text("删除") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDeleteId = null; pendingDeleteName = null }) { Text("取消") }
+            }
+        )
     }
 }
 

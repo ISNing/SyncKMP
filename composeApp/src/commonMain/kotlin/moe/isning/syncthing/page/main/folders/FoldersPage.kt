@@ -41,12 +41,20 @@ fun FoldersPage() {
         }
     }
     
+    var pendingDeleteId by remember { mutableStateOf<String?>(null) }
+    var pendingDeleteLabel by remember { mutableStateOf<String?>(null) }
+
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection).fillMaxSize(),
         topBar = {
             LargeTopAppBar(
                 title = { Text(LocalStrings.current.titleFolders) },
-                scrollBehavior = scrollBehavior
+                scrollBehavior = scrollBehavior,
+                actions = {
+                    IconButton(onClick = { viewModel.loadFolders() }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "刷新文件夹列表")
+                    }
+                }
             )
         },
         floatingActionButton = {
@@ -74,6 +82,8 @@ fun FoldersPage() {
                         modifier = Modifier.align(Alignment.Center),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        Icon(Icons.Default.Error, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                        Spacer(Modifier.height(8.dp))
                         Text("Error: ${state.error}")
                         Button(onClick = { viewModel.loadFolders() }) {
                             Text("Retry")
@@ -81,11 +91,23 @@ fun FoldersPage() {
                     }
                 }
                 state.folders.isEmpty() -> {
-                    Text(
-                        text = "No folders configured",
+                    Column(
                         modifier = Modifier.align(Alignment.Center),
-                        style = MaterialTheme.typography.bodyLarge
-                    )
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(Icons.Default.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = "No folders configured",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = "点击右下角 + 按钮来添加第一个文件夹",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
                 else -> {
                     LazyColumn(
@@ -102,19 +124,8 @@ fun FoldersPage() {
                                 onOverride = { viewModel.overrideFolder(folderWithStatus.folder.id) },
                                 onRevert = { viewModel.revertFolder(folderWithStatus.folder.id) },
                                 onDelete = {
-                                    // show confirm dialog per item
-                                    coroutineScope.launch {
-                                        val result = snackbarHostState.showSnackbar(
-                                            message = "删除 ${folderWithStatus.folder.label ?: folderWithStatus.folder.id} ?",
-                                            actionLabel = "确认",
-                                            withDismissAction = true
-                                        )
-                                        if (result == SnackbarResult.ActionPerformed) {
-                                            viewModel.deleteFolder(folderWithStatus.folder.id) { success, msg ->
-                                                coroutineScope.launch { snackbarHostState.showSnackbar(msg) }
-                                            }
-                                        }
-                                    }
+                                    pendingDeleteId = folderWithStatus.folder.id
+                                    pendingDeleteLabel = folderWithStatus.folder.label ?: folderWithStatus.folder.id
                                 }
                             )
                         }
@@ -140,6 +151,29 @@ fun FoldersPage() {
                 }
             )
         }
+    }
+    // Delete confirm dialog
+    if (pendingDeleteId != null) {
+        AlertDialog(
+            onDismissRequest = { pendingDeleteId = null; pendingDeleteLabel = null },
+            icon = { Icon(Icons.Default.Delete, contentDescription = null) },
+            title = { Text("删除文件夹") },
+            text = { Text("确定要删除文件夹 ${pendingDeleteLabel}? 此操作不会删除磁盘上的文件。") },
+            confirmButton = {
+                TextButton(onClick = {
+                    val id = pendingDeleteId
+                    pendingDeleteId = null; pendingDeleteLabel = null
+                    if (id != null) {
+                        viewModel.deleteFolder(id) { _, msg ->
+                            coroutineScope.launch { snackbarHostState.showSnackbar(msg) }
+                        }
+                    }
+                }) { Text("删除") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDeleteId = null; pendingDeleteLabel = null }) { Text("取消") }
+            }
+        )
     }
 }
 
