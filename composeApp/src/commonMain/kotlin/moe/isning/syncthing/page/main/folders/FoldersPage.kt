@@ -61,7 +61,7 @@ fun FoldersPage() {
             FloatingActionButton(
                 onClick = { showAddDialog = true }
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Folder")
+                Icon(Icons.Default.Add, contentDescription = "添加文件夹")
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -84,9 +84,9 @@ fun FoldersPage() {
                     ) {
                         Icon(Icons.Default.Error, contentDescription = null, tint = MaterialTheme.colorScheme.error)
                         Spacer(Modifier.height(8.dp))
-                        Text("Error: ${state.error}")
+                        Text("错误：${state.error}")
                         Button(onClick = { viewModel.loadFolders() }) {
-                            Text("Retry")
+                            Text("重试")
                         }
                     }
                 }
@@ -98,12 +98,12 @@ fun FoldersPage() {
                         Icon(Icons.Default.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            text = "No folders configured",
+                            text = "暂无文件夹",
                             style = MaterialTheme.typography.titleMedium
                         )
                         Spacer(Modifier.height(4.dp))
                         Text(
-                            text = "点击右下角 + 按钮来添加第一个文件夹",
+                            text = "点击右下角 + 按钮添加第一个文件夹",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -283,7 +283,7 @@ fun FolderCard(
                             modifier = Modifier.fillMaxWidth()
                         )
                         Text(
-                            text = "${(completion * 100).toInt()}% synchronized",
+                            text = "${(completion * 100).toInt()}% 已同步",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -300,26 +300,26 @@ fun FolderCard(
                     FilledTonalButton(onClick = onResume, modifier = Modifier.weight(1f)) {
                         Icon(Icons.Default.PlayArrow, contentDescription = null)
                         Spacer(Modifier.width(4.dp))
-                        Text("Resume")
+                        Text("继续")
                     }
                 } else {
                     FilledTonalButton(onClick = onPause, modifier = Modifier.weight(1f)) {
                         Icon(Icons.Default.Pause, contentDescription = null)
                         Spacer(Modifier.width(4.dp))
-                        Text("Pause")
+                        Text("暂停")
                     }
                 }
                 
                 OutlinedButton(onClick = onRefresh, modifier = Modifier.weight(1f)) {
                     Icon(Icons.Default.Refresh, contentDescription = null)
                     Spacer(Modifier.width(4.dp))
-                    Text("Scan")
+                    Text("扫描")
                 }
                 
                 IconButton(onClick = { showMoreActions = !showMoreActions }) {
                     Icon(
                         if (showMoreActions) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                        contentDescription = "More actions"
+                        contentDescription = "更多操作"
                     )
                 }
             }
@@ -370,9 +370,9 @@ fun FolderCard(
                         Icon(Icons.Default.Upload, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
                         Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
-                            Text("Override Changes", style = MaterialTheme.typography.bodyMedium)
+                            Text("强制覆盖变更", style = MaterialTheme.typography.bodyMedium)
                             Text(
-                                "Send local changes to other devices",
+                                "将本地更改发送至其他设备",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -386,9 +386,9 @@ fun FolderCard(
                         Icon(Icons.Default.Undo, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
                         Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
-                            Text("Revert Local Changes", style = MaterialTheme.typography.bodyMedium)
+                            Text("回滚本地更改", style = MaterialTheme.typography.bodyMedium)
                             Text(
-                                "Revert unexpected local changes",
+                                "回滚意外的本地更改",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -438,7 +438,7 @@ fun AddFolderDialog(
     
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Folder") },
+    title = { Text("添加文件夹") },
         text = {
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -451,10 +451,10 @@ fun AddFolderDialog(
                             folderId = it.trim()
                             folderIdError = false
                         },
-                        label = { Text("Folder ID *") },
+                        label = { Text("文件夹 ID *") },
                         isError = folderIdError,
                         supportingText = if (folderIdError) {
-                            { Text("Folder ID is required") }
+                            { Text("文件夹 ID 为必填") }
                         } else null,
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
@@ -465,7 +465,7 @@ fun AddFolderDialog(
                     OutlinedTextField(
                         value = label,
                         onValueChange = { label = it },
-                        label = { Text("Folder Label") },
+                        label = { Text("文件夹名称") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
@@ -478,12 +478,12 @@ fun AddFolderDialog(
                             path = it
                             pathError = false
                         },
-                        label = { Text("Folder Path *") },
+                        label = { Text("文件夹路径 *") },
                         isError = pathError,
                         supportingText = if (pathError) {
-                            { Text("Folder path is required") }
+                            { Text("文件夹路径为必填") }
                         } else {
-                            { Text("Absolute path to the folder") }
+                            { Text("请填写文件夹的绝对路径") }
                         },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
@@ -492,7 +492,7 @@ fun AddFolderDialog(
                 
                 item {
                     Text(
-                        text = "Folder Type",
+                        text = "文件夹类型",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -508,9 +508,9 @@ fun AddFolderDialog(
                                 onClick = { folderType = "sendreceive" }
                             )
                             Column {
-                                Text("Send & Receive", style = MaterialTheme.typography.bodyMedium)
+                                Text("发送与接收", style = MaterialTheme.typography.bodyMedium)
                                 Text(
-                                    "Synchronize files in both directions",
+                                    "双向同步文件",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -526,9 +526,9 @@ fun AddFolderDialog(
                                 onClick = { folderType = "sendonly" }
                             )
                             Column {
-                                Text("Send Only", style = MaterialTheme.typography.bodyMedium)
+                                Text("仅发送", style = MaterialTheme.typography.bodyMedium)
                                 Text(
-                                    "Only send changes to other devices",
+                                    "仅向其他设备发送更改",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -544,9 +544,9 @@ fun AddFolderDialog(
                                 onClick = { folderType = "receiveonly" }
                             )
                             Column {
-                                Text("Receive Only", style = MaterialTheme.typography.bodyMedium)
+                                Text("仅接收", style = MaterialTheme.typography.bodyMedium)
                                 Text(
-                                    "Only receive changes from other devices",
+                                    "仅从其他设备接收更改",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -618,12 +618,12 @@ fun AddFolderDialog(
                     }
                 }
             ) {
-                Text("Add")
+                Text("添加")
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text("取消")
             }
         }
     )

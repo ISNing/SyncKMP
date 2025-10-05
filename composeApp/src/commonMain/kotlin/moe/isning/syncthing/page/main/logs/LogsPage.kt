@@ -72,32 +72,32 @@ fun LogsPage() {
 				title = { Text(LocalStrings.current.titleLogs) },
 				actions = {
 					IconButton(onClick = { viewModel.loadLogs(resetSince = false) }) {
-						Icon(Icons.Default.Refresh, contentDescription = "Refresh logs")
+						Icon(Icons.Default.Refresh, contentDescription = "刷新日志")
 					}
 					IconButton(onClick = {
 						scope.launch {
 							val ok = viewModel.clearErrors()
 							snackbarHostState.showSnackbar(
-								if (ok) "Cleared system errors" else "Failed to clear errors"
+								if (ok) "已清除系统错误" else "清除失败"
 							)
 						}
 					}) {
-						Icon(Icons.Default.DeleteSweep, contentDescription = "Clear errors")
+						Icon(Icons.Default.DeleteSweep, contentDescription = "清除错误")
 					}
 					IconButton(onClick = {
 						val text = buildString {
 							if (state.systemErrors.isNotEmpty()) {
-								appendLine("[Errors]")
+								appendLine("[错误]")
 								state.systemErrors.forEach { appendLine("${it.time}  ${it.message}") }
 								appendLine()
 							}
-							appendLine("[Logs]")
+							appendLine("[日志]")
 							state.logEntries.forEach { appendLine("${it.time}  ${it.message}") }
 						}
 						clipboard.setText(AnnotatedString(text))
-						scope.launch { snackbarHostState.showSnackbar("Logs copied") }
+						scope.launch { snackbarHostState.showSnackbar("已复制日志") }
 					}) {
-						Icon(Icons.Default.ContentCopy, contentDescription = "Copy logs")
+						Icon(Icons.Default.ContentCopy, contentDescription = "复制日志")
 					}
 				},
 				scrollBehavior = scrollBehavior
@@ -114,9 +114,9 @@ fun LogsPage() {
 						horizontalAlignment = Alignment.CenterHorizontally,
 						verticalArrangement = Arrangement.spacedBy(8.dp)
 					) {
-						Text(text = state.error ?: "Unknown error", color = MaterialTheme.colorScheme.error)
+						Text(text = state.error ?: "未知错误", color = MaterialTheme.colorScheme.error)
 						androidx.compose.material3.FilledTonalButton(onClick = { viewModel.loadLogs(resetSince = true) }) {
-							Text("Retry")
+							Text("重试")
 						}
 					}
 				}
@@ -131,7 +131,7 @@ fun LogsPage() {
 						}
 						item {
 							Text(
-								text = "Recent Logs",
+								text = "最近日志",
 								style = MaterialTheme.typography.titleMedium,
 								modifier = Modifier.padding(bottom = 4.dp)
 							)
@@ -156,7 +156,7 @@ private fun ErrorsCard(errors: List<LogEntry>) {
 	) {
 		Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
 			Text(
-				text = "System Errors (${errors.size})",
+				text = "系统错误 (${errors.size})",
 				style = MaterialTheme.typography.titleMedium,
 				color = MaterialTheme.colorScheme.onErrorContainer
 			)
@@ -170,7 +170,7 @@ private fun ErrorsCard(errors: List<LogEntry>) {
 			}
 			if (errors.size > 50) {
 				Text(
-					text = "+ ${errors.size - 50} more…",
+					text = "+ ${errors.size - 50} 更多…",
 					style = MaterialTheme.typography.labelSmall,
 					color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f)
 				)

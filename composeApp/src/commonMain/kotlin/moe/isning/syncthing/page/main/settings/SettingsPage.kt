@@ -34,55 +34,55 @@ fun SettingsPage() {
             preferenceCategory(
                 key = "process_config",
                 title = {
-                    Text("Process Configuration")
+                    Text("进程配置")
                 })
             textFieldPreference(
                 key = "binary_path",
                 defaultValue = "",
-                title = { Text(text = "Binary Path") },
+                title = { Text(text = "可执行路径") },
                 icon = { Icon(imageVector = Icons.Outlined.Info, contentDescription = null) },
-                summary = { Text(text = it.ifEmpty{ "Default"}) },
+                summary = { Text(text = it.ifEmpty{ "默认"}) },
                 textToValue = { it },
             )
             textFieldPreference(
                 key = "working_dir",
                 defaultValue = "",
-                title = { Text(text = "Working Directory") },
+                title = { Text(text = "工作目录") },
                 icon = { Icon(imageVector = Icons.Outlined.Info, contentDescription = null) },
-                summary = { Text(text = it.ifEmpty{ "Default"}) },
+                summary = { Text(text = it.ifEmpty{ "默认"}) },
                 textToValue = { it },
             )
             textFieldPreference(
                 key = "log_file_path",
                 defaultValue = "",
-                title = { Text(text = "Log File Path") },
+                title = { Text(text = "日志文件路径") },
                 icon = { Icon(imageVector = Icons.Outlined.Info, contentDescription = null) },
-                summary = { Text(text = it.ifEmpty{ "Default"}) },
+                summary = { Text(text = it.ifEmpty{ "默认"}) },
                 textToValue = { it },
             )
             switchPreference(
                 key = "use_root",
                 defaultValue = false,
-                title = { Text(text = "Use Root") },
+                title = { Text(text = "使用 Root 权限") },
                 icon = { Icon(imageVector = Icons.Outlined.Info, contentDescription = null) },
             )
             preference(
                 key = "environment_variables",
-                title = { Text(text = "Environment Variables") },
+                title = { Text(text = "环境变量") },
                 icon = { Icon(imageVector = Icons.Outlined.Info, contentDescription = null) },
             )
             textFieldPreference(
                 key = "extra_args",
                 defaultValue = "",
-                title = { Text(text = "Extra Arguments") },
+                title = { Text(text = "额外参数") },
                 icon = { Icon(imageVector = Icons.Outlined.Info, contentDescription = null) },
-                summary = { Text(text = it.ifEmpty{ "Empty"}) },
+                summary = { Text(text = it.ifEmpty{ "空"}) },
                 textToValue = { it },
             )
             textFieldPreference(
                 key = "io_nice",
                 defaultValue = null,
-                title = { Text(text = "IO Niceness") },
+                title = { Text(text = "IO 优先级") },
                 icon = { Icon(imageVector = Icons.Outlined.Info, contentDescription = null) },
                 summary = { Text(text = it.toString()) },
                 textToValue = { it.toIntOrNull() },//FIXME
@@ -91,7 +91,7 @@ fun SettingsPage() {
             textFieldPreference(
                 key = "max_log_lines",
                 defaultValue = 200_000,
-                title = { Text(text = "Max Log Lines") },
+                title = { Text(text = "日志最大行数") },
                 icon = { Icon(imageVector = Icons.Outlined.Info, contentDescription = null) },
                 summary = { Text(text = it.toString()) },
                 textToValue = { it.toIntOrNull() ?: 200_000 },//FIXME

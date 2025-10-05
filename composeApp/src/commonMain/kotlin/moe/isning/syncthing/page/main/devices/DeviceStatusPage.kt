@@ -65,7 +65,7 @@ fun DevicesPage() {
             FloatingActionButton(
                 onClick = { showAddDialog = true }
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Device")
+                Icon(Icons.Default.Add, contentDescription = "添加设备")
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -88,9 +88,9 @@ fun DevicesPage() {
                     ) {
                         Icon(Icons.Default.Error, contentDescription = null, tint = MaterialTheme.colorScheme.error)
                         Spacer(Modifier.height(8.dp))
-                        Text("Error: ${state.error}")
+                        Text("错误：${state.error}")
                         Button(onClick = { viewModel.loadDevices() }) {
-                            Text("Retry")
+                            Text("重试")
                         }
                     }
                 }
@@ -102,12 +102,12 @@ fun DevicesPage() {
                         Icon(Icons.Default.Devices, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            text = "No devices configured",
+                            text = "暂无设备",
                             style = MaterialTheme.typography.titleMedium
                         )
                         Spacer(Modifier.height(4.dp))
                         Text(
-                            text = "点击右下角 + 按钮来添加设备",
+                            text = "点击右下角 + 按钮添加设备",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -125,9 +125,7 @@ fun DevicesPage() {
                                 MyDeviceIdCard(
                                     deviceId = deviceId,
                                     onCopySuccess = {
-                                        coroutineScope.launch {
-                                            snackbarHostState.showSnackbar("Device ID copied to clipboard")
-                                        }
+                                        coroutineScope.launch { snackbarHostState.showSnackbar("已复制到剪贴板") }
                                     }
                                 )
                             }
@@ -136,7 +134,7 @@ fun DevicesPage() {
                         // Section header for other devices
                         item {
                             Text(
-                                text = "Connected Devices",
+                                text = "已连接设备",
                                 style = MaterialTheme.typography.titleMedium,
                                 modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
                             )
@@ -410,7 +408,7 @@ fun AddDeviceDialog(
     
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Device") },
+        title = { Text("添加设备") },
         text = {
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -423,10 +421,10 @@ fun AddDeviceDialog(
                             deviceId = it.trim()
                             deviceIdError = false
                         },
-                        label = { Text("Device ID *") },
+                        label = { Text("设备 ID *") },
                         isError = deviceIdError,
                         supportingText = if (deviceIdError) {
-                            { Text("Device ID is required") }
+                            { Text("设备 ID 为必填") }
                         } else null,
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = false,
@@ -438,7 +436,7 @@ fun AddDeviceDialog(
                     OutlinedTextField(
                         value = deviceName,
                         onValueChange = { deviceName = it },
-                        label = { Text("Device Name") },
+                        label = { Text("设备名称") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
@@ -448,8 +446,8 @@ fun AddDeviceDialog(
                     OutlinedTextField(
                         value = addressesText,
                         onValueChange = { addressesText = it },
-                        label = { Text("Addresses") },
-                        supportingText = { Text("Comma-separated list or 'dynamic'") },
+                        label = { Text("地址") },
+                        supportingText = { Text("用逗号分隔，或填 'dynamic'") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = false,
                         maxLines = 3
@@ -458,7 +456,7 @@ fun AddDeviceDialog(
                 
                 item {
                     Text(
-                        text = "Compression",
+                        text = "压缩",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -469,17 +467,17 @@ fun AddDeviceDialog(
                         FilterChip(
                             selected = compression == "metadata",
                             onClick = { compression = "metadata" },
-                            label = { Text("Metadata") }
+                            label = { Text("仅元数据") }
                         )
                         FilterChip(
                             selected = compression == "always",
                             onClick = { compression = "always" },
-                            label = { Text("Always") }
+                            label = { Text("始终") }
                         )
                         FilterChip(
                             selected = compression == "never",
                             onClick = { compression = "never" },
-                            label = { Text("Never") }
+                            label = { Text("从不") }
                         )
                     }
                 }
@@ -492,11 +490,11 @@ fun AddDeviceDialog(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Introducer",
+                                text = "引荐设备",
                                 style = MaterialTheme.typography.bodyMedium
                             )
                             Text(
-                                text = "Auto-accept folders from this device",
+                                text = "自动接受来自此设备的文件夹",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -522,12 +520,12 @@ fun AddDeviceDialog(
                     }
                 }
             ) {
-                Text("Add")
+                Text("添加")
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text("取消")
             }
         }
     )
@@ -567,7 +565,7 @@ fun MyDeviceIdCard(
                     )
                     Spacer(Modifier.width(12.dp))
                     Text(
-                        text = "This Device",
+                        text = "本机",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
@@ -575,7 +573,7 @@ fun MyDeviceIdCard(
                 
                 AssistChip(
                     onClick = { },
-                    label = { Text("Local") },
+                    label = { Text("本地") },
                     colors = AssistChipDefaults.assistChipColors(
                         containerColor = MaterialTheme.colorScheme.primary,
                         labelColor = MaterialTheme.colorScheme.onPrimary
@@ -587,7 +585,7 @@ fun MyDeviceIdCard(
             
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = "Device ID",
+                    text = "设备 ID",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                 )
@@ -619,7 +617,7 @@ fun MyDeviceIdCard(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.ContentCopy,
-                                contentDescription = "Copy Device ID",
+                                contentDescription = "复制设备 ID",
                                 tint = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                         }
@@ -628,7 +626,7 @@ fun MyDeviceIdCard(
             }
             
             Text(
-                text = "Share this ID with other devices to establish connections",
+                text = "将此 ID 分享给其他设备以建立连接",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
             )

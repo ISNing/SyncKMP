@@ -100,7 +100,7 @@ fun HomePage(isRunning: Boolean = true) {
                                 }
                             }
                         ) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                            Icon(Icons.Default.Refresh, contentDescription = "刷新")
                         }
                     }
                 },
