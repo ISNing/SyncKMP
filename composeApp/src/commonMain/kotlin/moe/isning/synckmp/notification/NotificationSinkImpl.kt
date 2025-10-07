@@ -1,0 +1,1 @@
+package moe.isning.synckmp.notification
