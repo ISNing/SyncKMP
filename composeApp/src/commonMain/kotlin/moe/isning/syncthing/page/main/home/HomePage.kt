@@ -147,12 +147,12 @@ fun HomePage(isRunning: Boolean = true) {
                                     tint = MaterialTheme.colorScheme.primary
                                 )
                                 Text(
-                                    text = "Syncthing 服务未运行",
+                                    text = "SyncKMP 服务未运行",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
-                                    text = "点击上方卡片启动 Syncthing 服务以查看详细信息",
+                                    text = "点击上方卡片启动 SyncKMP 服务以查看详细信息",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -272,7 +272,7 @@ private fun StatusCard(
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = if (isRunning) "Syncthing 正在运行" else "Syncthing 已停止",
+                    text = if (isRunning) "SyncKMP 正在运行" else "SyncKMP 已停止",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = if (isRunning) 
